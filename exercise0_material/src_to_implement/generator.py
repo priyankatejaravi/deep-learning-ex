@@ -1,91 +1,81 @@
 import os.path
 import json
-import scipy.misc
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage import transform
+
+CLASS_NAMES = {
+    0: 'airplane', 1: 'automobile', 2: 'bird',  3: 'cat',  4: 'deer',
+    5: 'dog',      6: 'frog',       7: 'horse', 8: 'ship', 9: 'truck',
+}
 
 class ImageGenerator:
     def __init__(self, file_path, label_path, batch_size, image_size, rotation=False, mirroring=False, shuffle=False):
-        self.class_dict = {0: 'airplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer', 5: 'dog', 6: 'frog',
-                           7: 'horse', 8: 'ship', 9: 'truck'}
-        
         self.file_path = file_path
         self.label_path = label_path
         self.batch_size = batch_size
         self.image_size = image_size
         self.rotation = rotation
         self.mirroring = mirroring
+
         self.shuffle = shuffle
-        
-        with open(self.label_path, 'r') as f:
+        with open(label_path) as f:
             self.labels = json.load(f)
-            
-        self.dataset_size = len(self.labels)
-        self.keys = [str(i) for i in range(self.dataset_size)]
-        
+
+        self.file_names = list(self.labels.keys())
+        if shuffle:
+            np.random.shuffle(self.file_names)
+
+        self.current_index = 0
         self.epoch = 0
-        self.idx = 0
-        
-        if self.shuffle:
-            np.random.shuffle(self.keys)
+        self.image_paths = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.npy')]
 
     def next(self):
-        images = []
-        labels = []
+        collected_images = []
+        collected_labels = []
+
         for _ in range(self.batch_size):
-            if self.idx >= self.dataset_size:
+            if self.current_index >= len(self.file_names):
                 self.epoch += 1
-                self.idx = 0
+                self.current_index = 0
                 if self.shuffle:
-                    np.random.shuffle(self.keys)
-                    
-            key = self.keys[self.idx]
-            self.idx += 1
-            
-            img = np.load(os.path.join(self.file_path, f"{key}.npy"))
-            
-            if list(img.shape) != list(self.image_size):
-                import scipy.ndimage
-                zoom_factors = [t/c for t, c in zip(self.image_size, img.shape)]
-                img = scipy.ndimage.zoom(img, zoom_factors)
-                
+                    np.random.shuffle(self.file_names)
+
+            file_name = self.file_names[self.current_index]
+            img = np.load(os.path.join(self.file_path, f"{file_name}.npy"))
+
+            img = transform.resize(img, self.image_size)
             img = self.augment(img)
-            
-            images.append(img)
-            labels.append(int(self.labels[key]))
-            
-        return np.array(images), np.array(labels)
+
+            collected_images.append(img)
+            collected_labels.append(self.labels[file_name])
+
+            self.current_index += 1
+
+        return np.array(collected_images), np.array(collected_labels)
 
     def augment(self, img):
-        if self.mirroring:
-            if np.random.rand() > 0.5:
-                img = np.fliplr(img)
-            if np.random.rand() > 0.5:
-                img = np.flipud(img)
+        # this function takes a single image as an input and performs a random transformation
+        # (mirroring and/or rotation) on it and outputs the transformed image
+        if self.mirroring and np.random.rand() < 0.5:
+            img = np.fliplr(img)
         if self.rotation:
-            k = np.random.choice([1, 2, 3])
-            img = np.rot90(img, k)
+            k = np.random.randint(1, 4)   # 90, 180, or 270 degrees
+            img = np.rot90(img, k=k)
         return img
 
     def current_epoch(self):
         return self.epoch
 
     def class_name(self, x):
-        return self.class_dict[x]
+        # This function returns the class name for a specific input
+        return CLASS_NAMES[x]
 
     def show(self):
         images, labels = self.next()
-        fig, axes = plt.subplots(1, len(images), figsize=(15, 3))
-        if len(images) == 1:
-            axes = [axes]
-        for ax, img, lbl in zip(axes, images, labels):
-            ax.imshow(img)
-            ax.set_title(self.class_name(lbl))
-            ax.axis('off')
+        for i, (img, label) in enumerate(zip(images, labels)):
+            plt.subplot(2, self.batch_size // 2, i + 1)
+            plt.imshow(img)
+            plt.title(self.class_name(label))
+            plt.axis('off')
         plt.show()
-
-if __name__ == '__main__':
-    # Initialize the generator
-    gen = ImageGenerator('./exercise_data/', './Labels.json', batch_size=12, image_size=[50, 50, 3], rotation=True, mirroring=True, shuffle=True)
-    # Display a batch
-    gen.show()
