@@ -11,7 +11,6 @@ class SoftMax(BaseLayer):
     def forward(self, input_tensor):
         # Subtract max for numerical stability
         input_shifted = input_tensor - input_tensor.max(axis=1, keepdims=True)
-        
         # Compute softmax
         exp_values = np.exp(input_shifted)
         self.output_tensor = exp_values / exp_values.sum(axis=1, keepdims=True)

@@ -5,10 +5,11 @@ class FullyConnected(BaseLayer):
     def __init__(self, input_size, output_size):
         super().__init__()
         self.trainable = True
-        self.weights = np.random.uniform(0, 1, (input_size + 1, output_size))
+        # store weights privately and expose via properties
+        self._weights = np.random.uniform(0, 1, (input_size + 1, output_size))
         self.gradient_weights = None
         self.input_tensor = None
-        self.optimizer = None
+        self._optimizer = None
 
     def forward(self, input_tensor):
         # Add bias column to input
@@ -17,6 +18,15 @@ class FullyConnected(BaseLayer):
         self.input_tensor = np.concatenate([input_tensor, bias], axis=1)
         return self.input_tensor @ self.weights
 
+    @property
+    def weights(self):
+        return self._weights
+
+    @optimizer.setter
+    def optimizer(self, val):
+        self._optimizer = val
+
+    
     def backward(self, error_tensor):
         # Compute weight gradients
         self.gradient_weights = self.input_tensor.T @ error_tensor

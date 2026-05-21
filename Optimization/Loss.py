@@ -6,17 +6,17 @@ class CrossEntropyLoss:
     def __init__(self):
         self.prediction_tensor = None
 
-    def forward(self, predictions, labels):
+    def forward(self, prediction_tensor, label_tensor):
         # Store predictions for backward pass
-        self.prediction_tensor = predictions
-        
+        self.prediction_tensor = prediction_tensor
+
         # Epsilon for numerical stability (avoid log(0))
         epsilon = np.finfo(float).eps
         
         # Loss = -sum(labels * log(predictions))
-        return -np.sum(labels * np.log(predictions + epsilon))
+        return -np.sum(label_tensor * np.log(prediction_tensor + epsilon))
 
-    def backward(self, labels):
+    def backward(self, label_tensor):
         # Gradient = -labels / predictions
         epsilon = np.finfo(float).eps
-        return -labels / (self.prediction_tensor + epsilon)
+        return -label_tensor / (self.prediction_tensor + epsilon)
