@@ -18,16 +18,6 @@ class FullyConnected(BaseLayer):
         self.input_tensor = np.concatenate([input_tensor, bias], axis=1)
         return self.input_tensor @ self.weights
 
-<<<<<<< HEAD
-    @property
-    def weights(self):
-        return self._weights
-
-    @optimizer.setter
-    def optimizer(self, val):
-        self._optimizer = val
-
-=======
     @property 
     def optimizer(self):
         return self._optimizer
@@ -36,7 +26,6 @@ class FullyConnected(BaseLayer):
     @optimizer.setter
     def optimizer(self, optimizer_setter):
         self._optimizer = optimizer_setter
->>>>>>> 17f9d384efdc9052e6a323c9a357953f36c8e0c0
     
     def backward(self, error_tensor):
         # Compute weight gradients
