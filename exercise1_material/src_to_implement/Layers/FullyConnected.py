@@ -6,6 +6,7 @@ class FullyConnected(BaseLayer):
         super().__init__()
 
         self.trainable = True 
+        # store weights privately and expose via properties
         self.weights = np.random.uniform(low=0,high=1,size=(input_size + 1,output_size))
 
         self.gradient_weights = None
@@ -22,19 +23,21 @@ class FullyConnected(BaseLayer):
         self._optimizer = value
 
     def forward(self, input_tensor):
+        # Add bias column to input
         batch_size = input_tensor.shape[0]
-        ones = np.ones((batch_size, 1))
-        self.input_tensor = np.concatenate([input_tensor, ones], axis=1)
+        bias = np.ones((batch_size, 1))
+        self.input_tensor = np.concatenate([input_tensor, bias], axis=1)
         return self.input_tensor @ self.weights
 
     def backward(self, error_tensor):
-       # self.gradient_weights = np.matmul(self.input_tensor.T,error_tensor)
+        # Compute weight gradients
         self.gradient_weights = self.input_tensor.T @ error_tensor
 
-        # pass error back but remove the bias column
+        # Propagate error back (remove bias error)
         error_back = error_tensor @ self.weights.T
         error_back = error_back[:, :-1]
 
+        # Update weights if optimizer exists
         if self.optimizer is not None:
             self.weights = self.optimizer.calculate_update(self.weights, self.gradient_weights)
 
