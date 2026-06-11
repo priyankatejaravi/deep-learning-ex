@@ -6,8 +6,12 @@ import copy
 class NeuralNetwork:
     """Neural Network for training and inference."""
 
-    def __init__(self, optimizer):
+    def __init__(self, optimizer, weights_initializer, bias_initializer):
         self.optimizer = optimizer
+
+        self.weights_initializer = weights_initializer
+        self.bias_initializer = bias_initializer
+
         self.loss = []    
         self.layers = []  
         self.data_layer = None 
@@ -45,6 +49,8 @@ class NeuralNetwork:
 
         if layer.trainable:
             layer.optimizer = copy.deepcopy(self.optimizer)
+            # initialize weights with the stored initializers
+            layer.initialize(self.weights_initializer, self.bias_initializer)
         self.layers.append(layer)
 
     def train(self, iterations):

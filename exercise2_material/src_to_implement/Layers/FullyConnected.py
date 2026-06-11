@@ -6,6 +6,10 @@ class FullyConnected(BaseLayer):
         super().__init__()
 
         self.trainable = True 
+
+        self.input_size = input_size
+        self.output_size = output_size
+
         # store weights privately and expose via properties
         self.weights = np.random.uniform(low=0,high=1,size=(input_size + 1,output_size))
 
@@ -21,6 +25,20 @@ class FullyConnected(BaseLayer):
     @optimizer.setter
     def optimizer(self, value):
         self._optimizer = value
+    
+    def initialize(self, weights_initializer, bias_initializer):
+        # initialize weights part with fan_in and fan_out
+        weights = weights_initializer.initialize(
+            (self.input_size, self.output_size), self.input_size, self.output_size
+        )
+        # initialize bias separately
+        bias = bias_initializer.initialize(
+            (1, self.output_size), self.input_size, self.output_size
+        )
+        # bias is stored in the last row of the weight matrix
+        self.weights = np.concatenate([weights, bias], axis=0)
+
+
 
     def forward(self, input_tensor):
         # Add bias column to input
