@@ -1,0 +1,194 @@
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+Convolutional Neural Networks
+We will extend our framework to include the building blocks for modern Convolutional Neural
+Networks (CNNs). To this end, we will add initialization schemes improving our results,
+advanced optimizers and the two iconic layers making up CNNs, the convolutional layer and
+the max-pooling layer. To ensure compatibility between fully connected and convolutional
+layers, we will further implement a atten layer. Of course we want to continue implementing
+the layers ourselves and the usage of machine learning libraries is still not allowed.
+1 Initializers
+Initialization is critical for non-convex optimization problems. Depending on the application
+and network, dierent initialization strategies are required. A popular initialization scheme is
+named Xavier or Glorot initialization. Later an improved scheme specically targeting ReLU
+activation functions was proposed by Kaiming He.
+Task:
+Implement four classes Constant ,UniformRandom ,Xavier andHein the le \Initializ-
+ers.py" in folder \Layers". Each of them has to provide the method initialize(weights shape,
+fanin, fan out) which returns an initialized tensor of the desired shape.
+Implement all four initialization schemes. Note the following:
+{TheConstant class has a member that determines the constant value used for
+weight initialization. The value can be passed as a constructor argument, with a
+default of 0.1.
+{The support of the uniform distribution is the interval [0 ;1).
+{Have a look at the exercise slides for more information on Xavier and He initializers.
+Add a method initialize(weights initializer, bias initializer) to the class FullyCon-
+nected reinitializing its weights. Initialize the bias separately with the bias initializer .
+Remember that the bias is usually also stored in the weights matrix.
+Refactor the class NeuralNetwork to receive a weights initializer and a
+bias initializer upon construction.
+Extend the method append layer(layer) in the class NeuralNetwork such that it
+initializes trainable layers with the stored initializers .
+You can verify your implementation using the provided testsuite by providing the commandline
+parameter TestInitializers .
+1
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+2 Advanced Optimizers
+More advanced optimization schemes can increase speed of convergence. We implement a pop-
+ular per-parameter adaptive scheme named Adam and a common scheme improving stochastic
+gradient descent called momentum.
+Task:
+Implement the classes SgdWithMomentum andAdam in the le \Optimizers.py" in folder
+\Optimization". These classes all have to provide the method
+calculate update(weight tensor, gradient tensor) .
+TheSgdWithMomentum constructor receives the learning rate and the momen-
+tum rate in this order.
+TheAdam constructor receives the learning rate,muandrho, exactly in this order.
+In literature muis often referred as 1andrhoas2.
+Implement for both optimizers the method
+calculate update(weight tensor, gradient tensor) as it was done with the basic
+SGD Optimizer.
+You can verify your implementation using the provided testsuite by providing the commandline
+parameter TestOptimizers2 .
+2
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+3 Flatten Layer
+Flatten layers reshapes the multi-dimensional input to a one dimensional feature vector. This
+is useful especially when connecting a convolutional or pooling layer with a fully connected
+layer.
+Task:
+Implement a class Flatten in the le \Flatten.py" in folder \Layers". This class has to provide
+the methods forward(input tensor) andbackward(error tensor) .
+Write a constructor for this class, receiving no arguments .
+Implement a method forward(input tensor) , which reshapes and returns the input tensor .
+Implement a method backward(error tensor) which reshapes and returns the er-
+rortensor .
+You can verify your implementation using the provided testsuite by providing the commandline
+parameter TestFlatten .
+3
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+4 Convolutional Layer
+While fully connected layers are theoretically well suited to approximate any function they
+struggle to eciently classify images due to extensive memory consumption and overtting.
+Using convolutional layers, these problems can be circumvented by restricting the layer's pa-
+rameters to local receptive elds.
+Task:
+Implement a class Conv in the le \Conv.py" in folder \Layers". This class has to provide
+the methods forward(input tensor) andbackward(error tensor) .
+Write a constructor for this class, receiving the arguments stride shape ,convolu-
+tion shape andnum kernels dening the operation. Note the following:
+{this layer has trainable parameters, so set the inherited member trainable accord-
+ingly.
+{ stride shape can be a single value or a tuple. The latter allows for dierent strides
+in the spatial dimensions.
+{ convolution shape determines whether this object provides a 1D or a 2D con-
+volution layer. For 1D, it has the shape [c, m], whereas for 2D, it has the shape
+[c, m, n], where c represents the number of input channels, and m, n represent the
+spatial extent of the lter kernel.
+{ num kernels is an integer value.
+Initialize the parameters of this layer uniformly random in the range [0 ;1).
+To be able to test the gradients with respect to the weights: The members for weights
+and biases should be named weights andbias. Additionally provide two properties :
+gradient weights andgradient bias, which return the gradient with respect to the
+weights and bias, after they have been calculated in the backward-pass.
+Implement a method forward(input tensor) which returns a tensor that serves as the
+input tensor for the next layer. Note the following:
+{The input layout for 1D is dened in b, c, y order, for 2D in b, c, y, x order. Here,
+b stands for the batch, c represents the channels and x, y represent the spatial
+dimensions.
+{You can calculate the output shape in the beginning based on the input tensor
+and the stride shape .
+{Use zero-padding for convolutions/correlations (\same" padding). This allows input
+and output to have the same spatial shape for a stride of 1.
+4
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+Make sure that 1 1-convolutions and 1D convolutions are handled correctly.
+Hint: Using correlation in the forward and convolution/correlation in the backward pass
+might help with the ipping of kernels.
+Hint 2: The scipy package features a n-dimensional convolution/correlation.
+Hint 3: Eciency trade-os will be necessary in this scope. For example, striding may
+be implemented wastefully as subsampling after convolution/correlation.
+Implement a property optimizer storing the optimizer for this layer. Note that you
+need two copies of the optimizer object if you handle the bias separately from the other
+weights.
+Implement a method backward(error tensor) which updates the parameters using
+theoptimizer (if available) and returns the error tensor which returns a tensor that
+servers as error tensor for the next layer.
+Implement a method initialize(weights initializer, bias initializer) which reinitial-
+izes the weights by using the provided initializer objects.
+You can verify your implementation using the provided testsuite by providing the command-
+line parameter TestConv . For further debugging purposes we provide optional unittests in
+\SoftConvTests.py". Please read the instructions there carefully in case you need them.
+5
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+5 Pooling Layer
+Pooling layers are typically used in conjunction with the convolutional layer. They reduce the
+dimensionality of the input and therefore also decrease memory consumption. Additionally,
+they reduce overtting by introducing a degree of scale and translation invariance. We will
+implement max-pooling as the most common form of pooling.
+Task:
+Implement a class Pooling in the le \Pooling.py" in folder \Layers". This class has to provide
+the methods forward(input tensor) andbackward(error tensor) .
+Write a constructor receiving the arguments stride shape andpooling shape , with
+the same ordering as specied in the convolutional layer.
+Implement a method forward(input tensor) which returns a tensor that serves as the
+input tensor for the next layer. Hint: Keep in mind to store the correct information
+necessary for the backward pass.
+{Dierent to the convolutional layer, the pooling layer must be implemented only for
+the 2D case.
+{Use \valid"-padding for the pooling layer. This means, unlike to the convolutional
+layer, don't apply any \zero"-padding. This may discard border elements of the
+input tensor. Take it into account when creating your output tensor.
+Implement a method backward(error tensor) which returns a tensor that serves as
+theerror tensor for the next layer.
+You can verify your implementation using the provided testsuite by providing the commandline
+parameter TestPooling .
+6
+
+Deep Learning Exercises [DL E]
+Exercise 2
+Convolutional Neural NetworksDL Tutors Team
+June 24, 2022
+6 Test, Debug and Finish
+Now we implemented everything.
+Task:
+Debug your implementation until every test in the suite passes. You can run all tests by
+providing no commandline parameter. To run the unittests you can either execute them with
+python in the terminal or with the dedicated unittest environment of PyCharm. We recommend
+the latter one, as it provides a better overview of all tests. For the automated computation of
+the bonus points achieved in one exercise, run the unittests with the bonus ag in a terminal,
+with
+python3 NeuralNetworkTests.py Bonus
+or set in PyCharm a new \Python" conguration with Bonus as \Parameters". Notice, in
+some cases you need to set your src folder as \Working Directory". More information about
+PyCharm congurations can be found here1.
+Make sure you don't forget to upload your submission to StudOn. Use the dispatch tool, which
+checks all les for completeness and zips the les you need for the upload. Try
+python3 dispatch.py --help
+to check out the manual. For dispatching your folder run e.g.
+python3 dispatch.py -i ./src_to_implement -o submission.zip
+and upload the .zip le to StudOn.
+1https://www.jetbrains.com/help/pycharm/creating-and-editing-run-debug-congurations.html
+7

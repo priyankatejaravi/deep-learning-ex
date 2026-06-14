@@ -1,3 +1,4 @@
+# CNN convolution layer with forward/backprop and optimizer handling
 import numpy as np
 import copy
 from Layers.Base import BaseLayer
@@ -6,9 +7,19 @@ from scipy.ndimage import correlate, convolve
 from scipy.signal import correlate as correlate1d
 from scipy.signal import correlate2d
 
+
+"""Convolutional layer implementation.
+
+Supports 1D and 2D same-correlation (zero padding) with configurable stride.
+Implements forward, backward and parameter updates using per-parameter optimizers.
+"""
+
+
+# Main component implementation
 class Conv(BaseLayer):
 
     # constructor receiving stride_shape, convolution_shape, num_kernels
+    # Function entry point
     def __init__(self, stride_shape, convolution_shape, num_kernels):
         super().__init__()
         self.trainable = True
@@ -26,23 +37,28 @@ class Conv(BaseLayer):
     
     
     @property
+    # Function entry point
     def gradient_weights(self):
         return self._gradient_weights
 
     @property
+    # Function entry point
     def gradient_bias(self):
         return self._gradient_bias
     
     # two copies of optimizer needed: one for weights, one for bias
     @property
+    # Function entry point
     def optimizer(self):
         return self._weights_optimizer
 
     @optimizer.setter
+    # Function entry point
     def optimizer(self, optimizer):
         self._weights_optimizer = copy.deepcopy(optimizer)
         self._bias_optimizer = copy.deepcopy(optimizer)
 
+    # Function entry point
     def initialize(self, weights_initializer, bias_initializer):
         # fan_in = input_channels * kernel_height * kernel_width
         fan_in = int(np.prod(self.convolution_shape))
@@ -53,6 +69,7 @@ class Conv(BaseLayer):
         )
         self.bias = bias_initializer.initialize((self.num_kernels,), fan_in, fan_out)
 
+    # Function entry point
     def forward(self, input_tensor):
         self._input_tensor = input_tensor
         B = input_tensor.shape[0]
@@ -86,6 +103,7 @@ class Conv(BaseLayer):
 
         return output
 
+    # Function entry point
     def backward(self, error_tensor):
         input_tensor = self._input_tensor
         B = input_tensor.shape[0]
@@ -159,6 +177,5 @@ class Conv(BaseLayer):
             self.bias = self._bias_optimizer.calculate_update(self.bias, self._gradient_bias)
 
         return error_input
-
 
 

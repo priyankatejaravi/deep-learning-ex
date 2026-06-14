@@ -1,8 +1,28 @@
+# Max pooling layer implementation
 import numpy as np
 from Layers.Base import BaseLayer
 
+
+"""Max-pooling layer (2D) with valid padding.
+
+This layer implements non-overlapping or overlapping max-pooling depending on
+the provided `pooling_shape` and `stride_shape`. It stores the locations of
+the maxima during the forward pass so the backward pass can route gradients
+to the correct positions.
+"""
+
+
+
+# Main component implementation
 class Pooling(BaseLayer):
+    """Pooling layer for 2D inputs.
+
+    Args:
+        stride_shape: tuple(int, int) stride in (y, x) dimensions.
+        pooling_shape: tuple(int, int) pooling window (ph, pw).
+    """
     # constructor receives stride_shape and pooling_shape
+    # Function entry point
     def __init__(self, stride_shape, pooling_shape):
         super().__init__()
         self.stride_shape = stride_shape
@@ -10,7 +30,12 @@ class Pooling(BaseLayer):
         self._max_locations = None  # stores max positions for backward
         self._input_shape = None
 
+    # Function entry point
     def forward(self, input_tensor):
+        """Forward pass: compute max over pooling windows and save indices.
+
+        Returns pooled output of shape (B, C, out_H, out_W).
+        """
         self._input_shape = input_tensor.shape
         B, C, H, W = input_tensor.shape
         ph, pw = self.pooling_shape
@@ -35,7 +60,9 @@ class Pooling(BaseLayer):
 
         return output
 
+    # Function entry point
     def backward(self, error_tensor):
+        """Backward pass: route gradients to positions of the maxima saved earlier."""
         error_input = np.zeros(self._input_shape)
         B, C, _, _ = self._input_shape
         _, _, out_H, out_W = error_tensor.shape

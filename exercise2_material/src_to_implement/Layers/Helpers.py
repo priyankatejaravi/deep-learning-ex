@@ -1,3 +1,4 @@
+# Utility helpers used for testing, gradients and datasets
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -6,6 +7,14 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.datasets import load_iris, load_digits
 
 
+"""Collection of helper utilities for testing and dataset handling.
+
+Includes numerical gradient checks, dataset wrappers (Iris/Digit), and simple
+data shuffling/accuracy helpers used by the tests.
+"""
+
+
+# Function entry point
 def gradient_check(layers, input_tensor, label_tensor):
     epsilon = 1e-5
     difference = np.zeros_like(input_tensor)
@@ -48,6 +57,7 @@ def gradient_check(layers, input_tensor, label_tensor):
     return difference
 
 
+# Function entry point
 def gradient_check_weights(layers, input_tensor, label_tensor, bias):
     epsilon = 1e-5
     if bias:
@@ -113,7 +123,12 @@ def gradient_check_weights(layers, input_tensor, label_tensor, bias):
     return difference
 
 
+# Function entry point
 def calculate_accuracy(results, labels):
+    """Compute accuracy given soft predictions `results` and one-hot `labels`.
+
+    Returns fraction of correctly predicted samples.
+    """
 
     index_maximum = np.argmax(results, axis=1)
     one_hot_vector = np.zeros_like(results)
@@ -131,7 +146,9 @@ def calculate_accuracy(results, labels):
     return correct / (correct + wrong)
 
 
+# Function entry point
 def shuffle_data(input_tensor, label_tensor):
+    """Shuffle inputs and labels in the same random order and return arrays."""
     index_shuffling = [i for i in range(input_tensor.shape[0])]
     shuffle(index_shuffling)
     shuffled_input = [input_tensor[i, :] for i in index_shuffling]
@@ -139,13 +156,17 @@ def shuffle_data(input_tensor, label_tensor):
     return (np.array(shuffled_input)), (np.array(shuffled_labels))
 
 
+
+# Main component implementation
 class RandomData:
+    # Function entry point
     def __init__(self, input_size, batch_size, categories):
         self.input_size = input_size
         self.batch_size = batch_size
         self.categories = categories
         self.label_tensor = np.zeros([self.batch_size, self.categories])
 
+    # Function entry point
     def next(self):
         input_tensor = np.random.random([self.batch_size, self.input_size])
 
@@ -157,7 +178,10 @@ class RandomData:
 
 
 
+
+# Main component implementation
 class IrisData:
+    # Function entry point
     def __init__(self, batch_size):
         self.batch_size = batch_size
         self._data = load_iris()
@@ -175,6 +199,7 @@ class IrisData:
 
         self._current_forward_idx_iterator = self._forward_idx_iterator()
 
+    # Function entry point
     def _forward_idx_iterator(self):
         num_iterations = int(np.ceil(self.split / self.batch_size))
         idx = np.arange(self.split)
@@ -183,15 +208,20 @@ class IrisData:
             for i in range(num_iterations):
                 yield this_idx[i * self.batch_size:(i + 1) * self.batch_size]
 
+    # Function entry point
     def next(self):
         idx = next(self._current_forward_idx_iterator)
         return self._input_tensor_train[idx, :], self._label_tensor_train[idx, :]
 
+    # Function entry point
     def get_test_set(self):
         return self._input_tensor_test, self._label_tensor_test
 
 
+
+# Main component implementation
 class DigitData:
+    # Function entry point
     def __init__(self, batch_size):
         self.batch_size = batch_size
         self._data = load_digits(n_class=10)
@@ -209,6 +239,7 @@ class DigitData:
 
         self._current_forward_idx_iterator = self._forward_idx_iterator()
 
+    # Function entry point
     def _forward_idx_iterator(self):
         num_iterations = int(np.ceil(self.split / self.batch_size))
         rest = self.batch_size-self.split%self.batch_size
@@ -221,12 +252,13 @@ class DigitData:
                 else:
                     yield this_idx[i * self.batch_size:(i + 1) * self.batch_size]
 
+    # Function entry point
     def next(self):
         idx = next(self._current_forward_idx_iterator)
 
         return self._input_tensor_train[idx, :], self._label_tensor_train[idx, :]
 
+    # Function entry point
     def get_test_set(self):
         return self._input_tensor_test, self._label_tensor_test
-
 

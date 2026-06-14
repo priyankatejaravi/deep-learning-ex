@@ -1,7 +1,16 @@
+# Dense layer implementation with bias integrated into weight matrix
 from Layers.Base import BaseLayer
 import numpy as np
 
+
+# Main component implementation
 class FullyConnected(BaseLayer):
+    """A fully connected (dense) layer.
+
+    This layer appends a bias term to the input (as an extra row in `weights`) and
+    exposes `weights` of shape `(input_size+1, output_size)`.
+    """
+    # Function entry point
     def __init__(self, input_size, output_size):
         super().__init__()
 
@@ -19,13 +28,16 @@ class FullyConnected(BaseLayer):
 
     
     @property
+    # Function entry point
     def optimizer(self):
         return self._optimizer
 
     @optimizer.setter
+    # Function entry point
     def optimizer(self, value):
         self._optimizer = value
     
+    # Function entry point
     def initialize(self, weights_initializer, bias_initializer):
         # initialize weights part with fan_in and fan_out
         weights = weights_initializer.initialize(
@@ -40,6 +52,7 @@ class FullyConnected(BaseLayer):
 
 
 
+    # Function entry point
     def forward(self, input_tensor):
         # Add bias column to input
         batch_size = input_tensor.shape[0]
@@ -47,6 +60,7 @@ class FullyConnected(BaseLayer):
         self.input_tensor = np.concatenate([input_tensor, bias], axis=1)
         return self.input_tensor @ self.weights
 
+    # Function entry point
     def backward(self, error_tensor):
         # Compute weight gradients
         self.gradient_weights = self.input_tensor.T @ error_tensor
@@ -63,7 +77,6 @@ class FullyConnected(BaseLayer):
     
 
     
-
 
 
 
