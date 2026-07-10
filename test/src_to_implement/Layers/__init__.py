@@ -1,3 +1,3 @@
 __all__ = ["Helpers", "FullyConnected", "SoftMax", "ReLU", "Conv", "Pooling",
            "Initializers", "Flatten", "Base", "TanH", "Sigmoid",
-           "BatchNormalization", "Dropout", "RNN", "LSTM"]
+           "BatchNormalization", "Dropout", "RNN"]

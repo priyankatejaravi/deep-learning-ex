@@ -10,7 +10,7 @@ import os
 import tabulate
 import argparse
 
-ID = 3  # identifier for dispatcher
+ID = 2  # identifier for dispatcher
 
 
 class TestFullyConnected2(unittest.TestCase):
