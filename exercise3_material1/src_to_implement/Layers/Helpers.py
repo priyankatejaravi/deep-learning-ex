@@ -1,63 +1,23 @@
-# Utility helpers used for testing, gradients and datasets
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import gzip
+import struct
+import random
+from pathlib import Path
 from random import shuffle
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.datasets import load_iris, load_digits
 
 
-"""Collection of helper utilities for testing and dataset handling.
-
-Includes numerical gradient checks, dataset wrappers (Iris/Digit), and simple
-data shuffling/accuracy helpers used by the tests.
-"""
-
-
-# Function entry point
-def compute_bn_gradients(error_tensor, input_tensor, weights, mean, var, eps=1e-15):
-    """Compute gradient of batch normalization w.r.t. the input tensor.
-
-    This uses the full chain-rule derivation through the normalization step.
-    It does NOT compute gradients w.r.t. gamma/beta — do that separately.
-
-    Args:
-        error_tensor: gradient flowing in from the next layer (same shape as input)
-        input_tensor: the original (unnormalized) input from the forward pass
-        weights: gamma (scale) parameter of shape (channels,)
-        mean: batch mean computed during forward (shape: channels,)
-        var: batch variance computed during forward (shape: channels,)
-        eps: small value for numerical stability
-    Returns:
-        gradient w.r.t. input_tensor
-    """
-    n = input_tensor.shape[0]  # batch size
-
-    # Normalize just like we did in forward
-    x_hat = (input_tensor - mean) / np.sqrt(var + eps)
-
-    # Gradient w.r.t. x_hat from the error and gamma
-    dx_hat = error_tensor * weights
-
-    # Gradient w.r.t. variance
-    dvar = np.sum(dx_hat * (input_tensor - mean) * -0.5 * (var + eps) ** (-1.5), axis=0)
-
-    # Gradient w.r.t. mean
-    dmean = np.sum(dx_hat * -1 / np.sqrt(var + eps), axis=0) + dvar * np.sum(-2 * (input_tensor - mean), axis=0) / n
-
-    # Final gradient w.r.t. input
-    dx = dx_hat / np.sqrt(var + eps) + dvar * 2 * (input_tensor - mean) / n + dmean / n
-    return dx
-
-
-
-# Function entry point
-def gradient_check(layers, input_tensor, label_tensor):
+def gradient_check(layers, input_tensor, label_tensor, seed = None):
     epsilon = 1e-5
     difference = np.zeros_like(input_tensor)
 
     activation_tensor = input_tensor.copy()
     for layer in layers[:-1]:
+        np.random.seed(seed) if seed is not None else None
+        random.seed(seed) if seed is not None else None
         activation_tensor = layer.forward(activation_tensor)
     layers[-1].forward(activation_tensor, label_tensor)
 
@@ -75,7 +35,11 @@ def gradient_check(layers, input_tensor, label_tensor):
         analytical_derivative = error_tensor[it.multi_index]
 
         for layer in layers[:-1]:
+            np.random.seed(seed) if seed is not None else None
+            random.seed(seed) if seed is not None else None
             plus_epsilon = layer.forward(plus_epsilon)
+            np.random.seed(seed) if seed is not None else None
+            random.seed(seed) if seed is not None else None
             minus_epsilon = layer.forward(minus_epsilon)
         upper_error = layers[-1].forward(plus_epsilon, label_tensor)
         lower_error = layers[-1].forward(minus_epsilon, label_tensor)
@@ -94,7 +58,6 @@ def gradient_check(layers, input_tensor, label_tensor):
     return difference
 
 
-# Function entry point
 def gradient_check_weights(layers, input_tensor, label_tensor, bias):
     epsilon = 1e-5
     if bias:
@@ -148,6 +111,7 @@ def gradient_check_weights(layers, input_tensor, label_tensor, bias):
         lower_error = layers[-1].forward(minus_epsilon_activation, label_tensor)
 
         numerical_derivative = (upper_error - lower_error) / (2 * epsilon)
+
         normalizing_constant = max(np.abs(analytical_derivative), np.abs(numerical_derivative))
 
         if normalizing_constant < 1e-15:
@@ -155,17 +119,37 @@ def gradient_check_weights(layers, input_tensor, label_tensor, bias):
         else:
             difference[it.multi_index] = np.abs(analytical_derivative - numerical_derivative) / normalizing_constant
 
-
         it.iternext()
     return difference
 
 
-# Function entry point
-def calculate_accuracy(results, labels):
-    """Compute accuracy given soft predictions `results` and one-hot `labels`.
+def compute_bn_gradients(error_tensor, input_tensor, weights, mean, var, eps=np.finfo(float).eps):
+    # computation of the gradient w.r.t the input for the batch_normalization layer
 
-    Returns fraction of correctly predicted samples.
-    """
+    if eps > 1e-10:
+        raise ArithmeticError("Eps must be lower than 1e-10. Your eps values %s" %(str(eps)))
+
+    norm_mean = input_tensor - mean
+    var_eps = var + eps
+
+    gamma_err = error_tensor * weights
+    inv_batch = 1. / error_tensor.shape[0]
+
+    grad_var = np.sum(norm_mean * gamma_err * -0.5 * (var_eps ** (-3 / 2)), keepdims=True, axis=0)
+
+    sqrt_var = np.sqrt(var_eps)
+    first = gamma_err * 1. / sqrt_var
+
+    grad_mu_two = (grad_var * np.sum(-2. * norm_mean, keepdims=True, axis=0)) * inv_batch
+    grad_mu_one = np.sum(gamma_err * -1. / sqrt_var, keepdims=True, axis=0)
+
+    second = grad_var * (2. * norm_mean) * inv_batch
+    grad_mu = grad_mu_two + grad_mu_one
+
+    return first + second + inv_batch * grad_mu
+
+
+def calculate_accuracy(results, labels):
 
     index_maximum = np.argmax(results, axis=1)
     one_hot_vector = np.zeros_like(results)
@@ -183,9 +167,7 @@ def calculate_accuracy(results, labels):
     return correct / (correct + wrong)
 
 
-# Function entry point
 def shuffle_data(input_tensor, label_tensor):
-    """Shuffle inputs and labels in the same random order and return arrays."""
     index_shuffling = [i for i in range(input_tensor.shape[0])]
     shuffle(index_shuffling)
     shuffled_input = [input_tensor[i, :] for i in index_shuffling]
@@ -193,17 +175,13 @@ def shuffle_data(input_tensor, label_tensor):
     return (np.array(shuffled_input)), (np.array(shuffled_labels))
 
 
-
-# Main component implementation
 class RandomData:
-    # Function entry point
     def __init__(self, input_size, batch_size, categories):
         self.input_size = input_size
         self.batch_size = batch_size
         self.categories = categories
         self.label_tensor = np.zeros([self.batch_size, self.categories])
 
-    # Function entry point
     def next(self):
         input_tensor = np.random.random([self.batch_size, self.input_size])
 
@@ -214,20 +192,12 @@ class RandomData:
         return input_tensor, self.label_tensor
 
 
-
-
-# Main component implementation
 class IrisData:
-    # Function entry point
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, random=True):
+        self.random = random
         self.batch_size = batch_size
         self._data = load_iris()
-        # sparse_output=False gives a dense array (sparse=False was deprecated in sklearn 1.2)
-        try:
-            encoder = OneHotEncoder(sparse_output=False)
-        except TypeError:
-            encoder = OneHotEncoder(sparse=False)
-        self._label_tensor = encoder.fit_transform(self._data.target.reshape(-1, 1))
+        self._label_tensor = OneHotEncoder(sparse=False).fit_transform(self._data.target.reshape(-1, 1))
         self._input_tensor = self._data.data
         self._input_tensor /= np.abs(self._input_tensor).max()
 
@@ -241,38 +211,26 @@ class IrisData:
 
         self._current_forward_idx_iterator = self._forward_idx_iterator()
 
-    # Function entry point
     def _forward_idx_iterator(self):
         num_iterations = int(np.ceil(self.split / self.batch_size))
         idx = np.arange(self.split)
         while True:
-            this_idx = np.random.choice(idx, self.split, replace=False)
+            this_idx = np.random.choice(idx, self.split, replace=False) if self.random else idx
             for i in range(num_iterations):
                 yield this_idx[i * self.batch_size:(i + 1) * self.batch_size]
 
-    # Function entry point
     def next(self):
         idx = next(self._current_forward_idx_iterator)
         return self._input_tensor_train[idx, :], self._label_tensor_train[idx, :]
 
-    # Function entry point
     def get_test_set(self):
         return self._input_tensor_test, self._label_tensor_test
 
-
-
-# Main component implementation
 class DigitData:
-    # Function entry point
     def __init__(self, batch_size):
         self.batch_size = batch_size
         self._data = load_digits(n_class=10)
-        # sparse_output=False gives a dense array (sparse=False was deprecated in sklearn 1.2)
-        try:
-            encoder = OneHotEncoder(sparse_output=False)
-        except TypeError:
-            encoder = OneHotEncoder(sparse=False)
-        self._label_tensor = encoder.fit_transform(self._data.target.reshape(-1, 1))
+        self._label_tensor = OneHotEncoder(sparse=False).fit_transform(self._data.target.reshape(-1, 1))
         self._input_tensor = self._data.data.reshape(-1, 1, 8, 8)
         self._input_tensor /= np.abs(self._input_tensor).max()
 
@@ -286,7 +244,6 @@ class DigitData:
 
         self._current_forward_idx_iterator = self._forward_idx_iterator()
 
-    # Function entry point
     def _forward_idx_iterator(self):
         num_iterations = int(np.ceil(self.split / self.batch_size))
         rest = self.batch_size-self.split%self.batch_size
@@ -299,86 +256,89 @@ class DigitData:
                 else:
                     yield this_idx[i * self.batch_size:(i + 1) * self.batch_size]
 
-    # Function entry point
     def next(self):
         idx = next(self._current_forward_idx_iterator)
 
         return self._input_tensor_train[idx, :], self._label_tensor_train[idx, :]
 
-    # Function entry point
     def get_test_set(self):
         return self._input_tensor_test, self._label_tensor_test
 
 
-# Main component implementation
 class MNISTData:
-    """Loads MNIST handwritten digit data for training LeNet.
-
-    MNIST has 70,000 grayscale images of size 28x28.
-    We split 60,000 for training and 10,000 for testing.
-    Each image becomes shape (1, 28, 28) — one channel, 28 height, 28 width.
-    Labels are one-hot encoded into 10 classes (digits 0-9).
-    """
-
-    # Function entry point
     def __init__(self, batch_size):
         self.batch_size = batch_size
+        self.train, self.labels = self._read()
+        self.test, self.testLabels = self._read(dataset="testing")
 
-        # Download MNIST via sklearn — cached locally after first run
-        from sklearn.datasets import fetch_openml
-        data = fetch_openml('mnist_784', version=1, as_frame=False)
-
-        # Images are flat 784-dim vectors — reshape to (N, 1, 28, 28)
-        images = data.data.reshape(-1, 1, 28, 28).astype(float)
-        # Normalize pixel values from [0, 255] to [0, 1]
-        images /= 255.0
-
-        # Convert string labels like '0'..'9' to integers
-        labels_int = data.target.astype(int)
-        # One-hot encode: digit 3 becomes [0,0,0,1,0,0,0,0,0,0]
-        labels_oh = OneHotEncoder(sparse_output=False).fit_transform(
-            labels_int.reshape(-1, 1)
-        )
-
-        # Standard MNIST split: first 60k train, last 10k test
-        self.split = 60000
-        self._input_tensor_train = images[:self.split]
-        self._label_tensor_train = labels_oh[:self.split]
-        self._input_tensor_test = images[self.split:]
-        self._label_tensor_test = labels_oh[self.split:]
-
-        # Start the batch iterator
         self._current_forward_idx_iterator = self._forward_idx_iterator()
 
-    # Function entry point
     def _forward_idx_iterator(self):
-        """Yields random mini-batch indices forever (re-shuffles each epoch)."""
-        num_iters = int(np.ceil(self.split / self.batch_size))
-        idx = np.arange(self.split)
+        num_iterations = int(self.train.shape[0] / self.batch_size)
+        idx = np.arange(self.train.shape[0])
         while True:
-            # Shuffle indices each epoch so batches are different
-            shuffled = np.random.choice(idx, self.split, replace=False)
-            for i in range(num_iters):
-                yield shuffled[i * self.batch_size: (i + 1) * self.batch_size]
+            this_idx = np.random.choice(idx, self.train.shape[0], replace=False)
+            for i in range(num_iterations):
+                yield this_idx[i * self.batch_size:(i + 1) * self.batch_size]
 
-    # Function entry point
     def next(self):
-        """Return the next mini-batch of (images, labels)."""
         idx = next(self._current_forward_idx_iterator)
-        return self._input_tensor_train[idx], self._label_tensor_train[idx]
+        return self.train[idx, :], self.labels[idx, :]
 
-    # Function entry point
-    def get_test_set(self):
-        """Return the full test split for final evaluation."""
-        return self._input_tensor_test, self._label_tensor_test
-
-    # Function entry point
     def show_random_training_image(self):
-        """Display one random training image — useful sanity check."""
-        import matplotlib.pyplot as plt
-        idx = np.random.randint(0, self.split)
-        # squeeze removes the channel dimension for 2D plotting
-        plt.figure('Random MNIST training sample')
-        plt.imshow(self._input_tensor_train[idx, 0], cmap='gray')
-        plt.title(f"Label: {np.argmax(self._label_tensor_train[idx])}")
+        image = self.train[np.random.randint(0, self.train.shape[0]-1), :28 , :28]
+        plt.imshow(image.reshape(28, 28), cmap='gray')
         plt.show()
+
+    def show_image(self, index, test=True):
+        if test:
+            image = self.test[index, :28 * 28]
+        else:
+            image = self.train[index, :28 * 28]
+
+        plt.imshow(image.reshape(28, 28), cmap='gray')
+        plt.show()
+
+    def get_test_set(self):
+        return self.test, self.testLabels
+
+    @staticmethod
+    def _read(dataset="training"):
+        """
+        Python function for importing the MNIST data set.  It returns an iterator
+        of 2-tuples with the first element being the label and the second element
+        being a numpy.uint8 2D array of pixel data for the given image.
+        """
+
+        root_dir = Path(__file__)
+
+        if dataset == "training":
+            fname_img = root_dir.parent.parent.joinpath('Data', 'train-images-idx3-ubyte.gz')
+            fname_lbl = root_dir.parent.parent.joinpath('Data', 'train-labels-idx1-ubyte.gz')
+        elif dataset == "testing":
+            fname_img = root_dir.parent.parent.joinpath('Data', 't10k-images-idx3-ubyte.gz')
+            fname_lbl = root_dir.parent.parent.joinpath('Data', 't10k-labels-idx1-ubyte.gz')
+        else:
+            raise ValueError("dataset must be 'testing' or 'training'")
+
+        # Load everything in some numpy arrays
+        with gzip.open(str(fname_lbl), 'rb') as flbl:
+            magic, num = struct.unpack(">II", flbl.read(8))
+
+            s = flbl.read(num)
+            lbl = np.frombuffer(s, dtype=np.int8)
+            one_hot = np.zeros((lbl.shape[0],10))
+            for idx, l in enumerate(lbl):
+                one_hot[idx, l] = 1
+
+        with gzip.open(str(fname_img), 'rb') as fimg:
+            magic, num, rows, cols = struct.unpack(">IIII", fimg.read(16))
+
+            buffer = fimg.read(num * 32 * 32 * 8)
+            img = np.frombuffer(buffer, dtype=np.uint8).reshape(len(lbl), 1, rows,  cols)
+            img = img.astype(np.float64)
+            img /= 255.0
+
+        img = img[:num, :]
+        one_hot = one_hot[:num, :]
+        return img, one_hot
