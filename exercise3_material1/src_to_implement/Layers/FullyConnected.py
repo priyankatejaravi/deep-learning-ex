@@ -1,47 +1,87 @@
-import numpy as np
+# Dense layer implementation with bias integrated into weight matrix
 from Layers.Base import BaseLayer
+import numpy as np
 
 
+# Main component implementation
 class FullyConnected(BaseLayer):
+    """A fully connected (dense) layer.
+
+    This layer appends a bias term to the input (as an extra row in `weights`) and
+    exposes `weights` of shape `(input_size+1, output_size)`.
+    """
+    # Function entry point
     def __init__(self, input_size, output_size):
         super().__init__()
-        self.trainable = True
+
+        self.trainable = True 
+
         self.input_size = input_size
         self.output_size = output_size
 
-        # last row of weights is the bias
-        self.weights = np.random.uniform(0, 1, (input_size + 1, output_size))
+        # store weights privately and expose via properties
+        self.weights = np.random.uniform(low=0,high=1,size=(input_size + 1,output_size))
 
-        self.input_tensor = None
         self.gradient_weights = None
+        self.input_tensor = None
         self._optimizer = None
 
+    
     @property
+    # Function entry point
     def optimizer(self):
         return self._optimizer
 
     @optimizer.setter
-    def optimizer(self, optimizer):
-        self._optimizer = optimizer
-
+    # Function entry point
+    def optimizer(self, value):
+        self._optimizer = value
+    
+    # Function entry point
     def initialize(self, weights_initializer, bias_initializer):
-        weights = weights_initializer.initialize((self.input_size, self.output_size), self.input_size, self.output_size)
-        bias = bias_initializer.initialize((1, self.output_size), self.input_size, self.output_size)
+        # initialize weights part with fan_in and fan_out
+        weights = weights_initializer.initialize(
+            (self.input_size, self.output_size), self.input_size, self.output_size
+        )
+        # initialize bias separately
+        bias = bias_initializer.initialize(
+            (1, self.output_size), self.input_size, self.output_size
+        )
+        # bias is stored in the last row of the weight matrix
         self.weights = np.concatenate([weights, bias], axis=0)
 
+
+
+    # Function entry point
     def forward(self, input_tensor):
+        # Add bias column to input
         batch_size = input_tensor.shape[0]
-        bias_column = np.ones((batch_size, 1))
-        self.input_tensor = np.concatenate([input_tensor, bias_column], axis=1)
-        return np.dot(self.input_tensor, self.weights)
+        bias = np.ones((batch_size, 1))
+        self.input_tensor = np.concatenate([input_tensor, bias], axis=1)
+        return self.input_tensor @ self.weights
 
+    # Function entry point
     def backward(self, error_tensor):
-        self.gradient_weights = np.dot(self.input_tensor.T, error_tensor)
+        # Compute weight gradients
+        self.gradient_weights = self.input_tensor.T @ error_tensor
 
-        error_previous = np.dot(error_tensor, self.weights.T)
-        error_previous = error_previous[:, :-1]
+        # Propagate error back (remove bias error)
+        error_back = error_tensor @ self.weights.T
+        error_back = error_back[:, :-1]
 
+        # Update weights if optimizer exists
         if self.optimizer is not None:
             self.weights = self.optimizer.calculate_update(self.weights, self.gradient_weights)
 
-        return error_previous
+        return error_back
+    
+
+    
+
+
+
+
+
+
+
+

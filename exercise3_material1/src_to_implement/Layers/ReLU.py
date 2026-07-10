@@ -1,17 +1,24 @@
+# Rectified Linear Unit activation
 import numpy as np
 from Layers.Base import BaseLayer
 
 
+# Main component implementation
 class ReLU(BaseLayer):
+    """ReLU activation: f(x) = max(0, x)"""
+
+    # Function entry point
     def __init__(self):
         super().__init__()
         self.input_tensor = None
 
+    # Function entry point
     def forward(self, input_tensor):
         self.input_tensor = input_tensor
+        # ReLU: keep positive values, set negative to 0
         return np.maximum(0, input_tensor)
 
+    # Function entry point
     def backward(self, error_tensor):
-        error_tensor = error_tensor.copy()
-        error_tensor[self.input_tensor <= 0] = 0
-        return error_tensor
+        # Gradient: 1 where input > 0, else 0
+        return error_tensor * (self.input_tensor > 0)
