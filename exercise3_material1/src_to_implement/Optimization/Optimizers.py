@@ -2,6 +2,12 @@ import numpy as np
 
 
 class Optimizer:
+    """Base optimizer — provides regularizer slot for all subclasses.
+
+    Any concrete optimizer inherits this and gets add_regularizer()
+    for free. The regularizer gradient is added in calculate_update.
+    """
+
     def __init__(self):
         self.regularizer = None
 

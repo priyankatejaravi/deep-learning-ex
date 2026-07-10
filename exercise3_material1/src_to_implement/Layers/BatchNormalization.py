@@ -5,6 +5,16 @@ from Layers.Helpers import compute_bn_gradients
 
 
 class BatchNormalization(BaseLayer):
+    """Batch Normalization layer for both FC (vector) and Conv (image) inputs.
+
+    For vector inputs shape is (batch, channels).
+    For image inputs shape is (batch, channels, height, width).
+
+    The layer normalizes over the batch (and spatial dims for images),
+    then applies learned scale gamma and shift beta.
+    """
+
+    # Function entry point
     def __init__(self, channels):
         super().__init__()
         self.trainable = True

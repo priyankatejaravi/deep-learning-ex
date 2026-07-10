@@ -3,6 +3,12 @@ from Layers.Base import BaseLayer
 
 
 class TanH(BaseLayer):
+    """Hyperbolic tangent activation: f(x) = tanh(x).
+
+    Gradient: f'(x) = 1 - tanh(x)^2 = 1 - activations^2
+    We store the activation (output) instead of the input because the
+    gradient formula only needs the output — no need to keep the input.
+    """
     def __init__(self):
         super().__init__()
         self.activation = None
