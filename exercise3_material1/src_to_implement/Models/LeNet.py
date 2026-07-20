@@ -5,6 +5,31 @@ from Layers import Initializers
 
 
 def build():
+    """Build and return a LeNet-style CNN for MNIST (28x28 grayscale images).
+
+    Architecture (simplified LeNet-5 variant):
+        Input:  (batch, 1, 28, 28)
+
+        Conv1:  6 kernels of size (1, 5, 5), stride (1,1)  → (batch, 6, 28, 28)
+        ReLU
+        Pool1:  window (2,2), stride (2,2)                  → (batch, 6, 14, 14)
+
+        Conv2:  16 kernels of size (6, 5, 5), stride (1,1)  → (batch, 16, 14, 14)
+        ReLU
+        Pool2:  window (2,2), stride (2,2)                  → (batch, 16, 7, 7)
+
+        Flatten                                              → (batch, 784)
+        FC1:    784 → 120,  ReLU
+        FC2:    120 → 84,   ReLU
+        FC3:    84  → 10
+        SoftMax                                              → (batch, 10)
+
+    Optimizer: Adam(lr=5e-4, beta1=0.9, beta2=0.999)
+    Regularizer: L2 with weight 4e-4 (applied to Adam)
+    Weight init: He (good for ReLU networks)
+    Bias init: Constant(0.1)
+    """
+    
     optimizer = Optimizers.Adam(5e-4, 0.9, 0.999)
     optimizer.add_regularizer(Constraints.L2_Regularizer(4e-4))
 

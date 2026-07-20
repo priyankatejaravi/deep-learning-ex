@@ -3,6 +3,12 @@ from Layers.Base import BaseLayer
 
 
 class Dropout(BaseLayer):
+    """Inverted Dropout layer.
+
+    During training, each neuron output is kept with probability `probability`
+    and scaled by 1/probability so the expected value stays the same.
+    During testing, the layer does nothing (pass-through).
+    """
     def __init__(self, probability):
         super().__init__()
         self.probability = probability

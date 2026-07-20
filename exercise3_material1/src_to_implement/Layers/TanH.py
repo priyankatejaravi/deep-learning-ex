@@ -18,4 +18,5 @@ class TanH(BaseLayer):
         return self.activation
 
     def backward(self, error_tensor):
+        # derivative of tanh is 1 - tanh^2
         return error_tensor * (1 - self.activation ** 2)

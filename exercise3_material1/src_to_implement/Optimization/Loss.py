@@ -2,6 +2,8 @@ import numpy as np
 
 
 class CrossEntropyLoss:
+    """Cross Entropy Loss for classification tasks."""
+
     def __init__(self):
         self.prediction_tensor = None
 

@@ -2,6 +2,11 @@ import numpy as np
 
 
 class L1_Regularizer:
+    """L2 (Frobenius) regularization also known as weight decay.
+
+    Forward: adds alpha * sum(w^2) to the loss
+    Backward: gradient contribution is 2 * alpha * w
+    """
     def __init__(self, alpha):
         self.alpha = alpha
 

@@ -6,6 +6,15 @@ from Layers.TanH import TanH
 
 
 class RNN(BaseLayer):
+    """Elman RNN layer with Backpropagation Through Time (BPTT).
+
+    Architecture per time step:
+        combined  = [h_{t-1}, x_t]            (hidden + input stacked)
+        h_t       = tanh( FC_hidden(combined) )
+        y_t       = FC_output(h_t)
+
+    The "batch" dimension of the input tensor is treated as the time dimension.
+    """
     def __init__(self, input_size, hidden_size, output_size):
         self.input_size = input_size
         self.hidden_size = hidden_size
